@@ -2,9 +2,13 @@ import { useRef, useState } from 'react';
 
 import Phaser from 'phaser';
 import { PhaserGame } from './game/PhaserGame';
+import { EventBus } from './game/EventBus';
 
-function App ()
-{
+
+const App = () => {
+    const [mode, setMode] = useState(null);
+    const [difficulty, setDifficulty] = useState('easy');
+
     // The sprite can only be moved in the MainMenu Scene
     const [canMoveSprite, setCanMoveSprite] = useState(true);
     
@@ -70,24 +74,26 @@ function App ()
         
     }
 
+    const startGame = (selectedMode, selectedDifficulty) => {
+        setMode(selectedMode);
+        setDifficulty(selectedDifficulty);
+        EventBus.emit('start-game', { mode: selectedMode, difficulty: selectedDifficulty });
+    };
+
+
     return (
-        <div id="app">
-            <PhaserGame ref={phaserRef} currentActiveScene={currentScene} />
+        <div>
+        {!mode ? (
             <div>
-                <div>
-                    <button className="button" onClick={changeScene}>Change Scene</button>
-                </div>
-                <div>
-                    <button disabled={canMoveSprite} className="button" onClick={moveSprite}>Toggle Movement</button>
-                </div>
-                <div className="spritePosition">Sprite Position:
-                    <pre>{`{\n  x: ${spritePosition.x}\n  y: ${spritePosition.y}\n}`}</pre>
-                </div>
-                <div>
-                    <button className="button" onClick={addSprite}>Add New Sprite</button>
-                </div>
+                <h1>Side Stacker Game</h1>
+                <button onClick={() => startGame('PvP', 'easy')}>Play PvP</button>
+                <button onClick={() => startGame('AI', 'easy')}>Play AI (Easy)</button>
+                <button onClick={() => startGame('AI', 'hard')}>Play AI (Hard)</button>
             </div>
-        </div>
+        ) : (
+            <PhaserGame currentActiveScene={(scene) => console.log('Active Scene:', scene)} />
+        )}
+    </div>
     )
 }
 

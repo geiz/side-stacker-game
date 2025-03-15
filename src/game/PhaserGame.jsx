@@ -1,63 +1,51 @@
-import PropTypes from 'prop-types';
-import { forwardRef, useEffect, useLayoutEffect, useRef } from 'react';
-import StartGame from './main';
+import { useEffect, useRef } from 'react';
+import Phaser from 'phaser';
 import { EventBus } from './EventBus';
+import { Game } from './scenes/Game';
 
-export const PhaserGame = forwardRef(function PhaserGame ({ currentActiveScene }, ref)
-{
-    const game = useRef();
-
-    // Create the game inside a useLayoutEffect hook to avoid the game being created outside the DOM
-    useLayoutEffect(() => {
-        
-        if (game.current === undefined)
-        {
-            game.current = StartGame("game-container");
-            
-            if (ref !== null)
-            {
-                ref.current = { game: game.current, scene: null };
-            }
-        }
-
-        return () => {
-
-            if (game.current)
-            {
-                game.current.destroy(true);
-                game.current = undefined;
-            }
-
-        }
-    }, [ref]);
+export const PhaserGame = ({ currentActiveScene }) => {
+    const gameRef = useRef(null);
 
     useEffect(() => {
-
-        EventBus.on('current-scene-ready', (currentScene) => {
-
-            if (currentActiveScene instanceof Function)
-            {
-                currentActiveScene(currentScene);
-            }
-            ref.current.scene = currentScene;
+        if (!gameRef.current) {
+            const config = {
+                type: Phaser.AUTO,
+                width: 800,
+                height: 600,
+                parent: 'game-container',
+                backgroundColor: '#040218',
+                scene: [Game],
+                physics: {
+                    default: 'arcade',
+                    arcade: {
+                        gravity: { y: 0 },
+                        debug: true
+                    }
+                }
+            };
             
-        });
+            gameRef.current = new Phaser.Game(config);
+        }
+
+        const handleSceneReady = (scene) => {
+            console.log('Game scene ready:', scene);
+            if (currentActiveScene) {
+                currentActiveScene(scene);
+            }
+        };
+
+        EventBus.on('current-scene-ready', handleSceneReady);
 
         return () => {
+            EventBus.off('current-scene-ready', handleSceneReady);
+            if (gameRef.current) {
+                gameRef.current.destroy(true);
+                gameRef.current = null;
+            }
+        };
+    }, [currentActiveScene]);
 
-            EventBus.removeListener('current-scene-ready');
+    return <div id="game-container" style={{ width: '800px', height: '600px', margin: 'auto', backgroundColor: 'black' }}></div>;
+};
 
-        }
-        
-    }, [currentActiveScene, ref])
-
-    return (
-        <div id="game-container"></div>
-    );
-
-});
-
-// Props definitions
-PhaserGame.propTypes = {
-    currentActiveScene: PropTypes.func 
-}
+export default PhaserGame;
