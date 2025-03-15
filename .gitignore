@@ -1,21 +1,25 @@
-*.git
-*.firebase
-Thumbs.db
-.DS_Store
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
 .idea
-.vscode
+.DS_Store
 *.suo
-*.sublime-project
-*.sublime-workspace
-
-# Vendors
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 node_modules/
-
-# Build
-/npm-debug.log
-build/
-out/
-scripts/tsgen/test/bin/
-scripts/tsgen/test/output.txt
-
-plugins/spine*/spine-runtimes/
