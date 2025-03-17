@@ -77,10 +77,53 @@ export class Game extends Phaser.Scene {
         this.drawBoard();
         if (this.checkWin()) {
             EventBus.emit('game-over', this.currentPlayer);
-        } 
+        } else {
+            this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+            if (this.isAI && this.currentPlayer === 'O') {
+                this.processAIMove();
+            }
+        }
     }
 
-    
+    // Handles AI's move decision
+    processAIMove() {
+        let move;
+        if (this.aiDifficulty === 'easy') {
+            move = this.getRandomMove();
+        } else {
+            move = this.getStrategicMove();
+        }
+        this.makeMove(move.row, move.side);
+    }
+
+    // Returns a random valid move for AI
+    getRandomMove() {
+        return {
+            row: Math.floor(Math.random() * this.boardSize),
+            side: Math.random() < 0.5 ? 'L' : 'R'
+        };
+    }
+
+    // AI selects a move using a basic strategy
+    getStrategicMove() {
+        for (let row = 0; row < this.boardSize; row++) {
+            for (let side of ['L', 'R']) {
+                let testBoard = JSON.parse(JSON.stringify(this.board));
+                let col = side === 'L' ? 0 : this.boardSize - 1;
+                while (testBoard[row][col] !== null) {
+                    col += side === 'L' ? 1 : -1;
+                    if (col < 0 || col >= this.boardSize) break;
+                }
+                if (col >= 0 && col < this.boardSize) {
+                    testBoard[row][col] = 'O';
+                    if (this.checkWin(testBoard)) {
+                        return { row, side };
+                    }
+                }
+            }
+        }
+        return this.getRandomMove();
+    }
 
     // Checks if there is a winner on the board
     checkWin(board = this.board) {
