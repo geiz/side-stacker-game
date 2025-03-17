@@ -1,24 +1,25 @@
 {
-    "name": "template-react",
-    "description": "A Phaser 3 project template that demonstrates React communication and uses Vite for bundling.",
-    "version": "1.1.1",
+    "name": "side-staker-connect-4",
+    "description": "Connect 4 to win! matching side ways in a 7x7 grid.",
+    "version": "0.0.1",
     "type": "module",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/phaserjs/template-react.git"
+        "url": "git+https://github.com/geiz/side-stacker-game.git"
     },
-    "author": "Phaser Studio <support@phaser.io> (https://phaser.io/)",
+    "author": "David Shi",
     "license": "MIT",
     "licenseUrl": "http://www.opensource.org/licenses/mit-license.php",
     "bugs": {
-        "url": "https://github.com/phaserjs/template-react/issues"
+        "url": "https://github.com/geiz/side-stacker-game/issues"
     },
-    "homepage": "https://github.com/phaserjs/template-react#readme",
+    "homepage": "https://github.com/geiz/side-stacker-game",
     "keywords": [
         "phaser",
         "phaser3",
         "react",
-        "vite"
+        "vite",
+        "connect4"
     ],
     "scripts": {
         "dev": "node log.js dev & vite --config vite/config.dev.mjs",
