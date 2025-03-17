@@ -1,5 +1,6 @@
 import { EventBus } from '../EventBus';
 import Phaser from 'phaser';
+import { GameOver } from './GameOver';
 
 export class Game extends Phaser.Scene {
     constructor() {
@@ -32,11 +33,6 @@ export class Game extends Phaser.Scene {
         EventBus.emit('current-scene-ready', this);
     }
 
-    // Changes to the Game Over scene
-    changeScene() {
-        this.scene.start('GameOver');
-    }
-
     // Creates an empty game board
     createBoard(rows, cols) {
         return Array.from({ length: rows }, () => Array(cols).fill(null));
@@ -57,6 +53,12 @@ export class Game extends Phaser.Scene {
             this.aiDifficulty = difficulty;
             this.resetGame();
         });
+    
+        // Listen for game-over event and transition to GameOver scene
+        EventBus.on('game-over', (winner) => {
+            console.log('Game Over! Winner:', winner);
+            //this.scene.start('GameOver', { winner }); // Pass winner data
+        });
     }
 
     // Handles user input when clicking the board
@@ -76,7 +78,7 @@ export class Game extends Phaser.Scene {
         this.board[row][col] = this.currentPlayer;
         this.drawBoard();
         if (this.checkWin()) {
-            EventBus.emit('game-over', this.currentPlayer);
+            this.showWinnerPopup(this.currentPlayer);
         } else {
             this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
             if (this.isAI && this.currentPlayer === 'O') {
@@ -152,16 +154,64 @@ export class Game extends Phaser.Scene {
         return false;
     }
 
+    // Draws grid lines and side indicators
+drawGrid() {
+    // Clear previous graphics
+    this.graphics.clear();
+
+    // Background color for the board
+    this.graphics.fillStyle(0xbbada0, 0.9);
+    this.graphics.fillRoundedRect(100, 100, 600, 600, 16);
+
+    // Draw vertical grid lines
+    for (let i = 1; i < this.boardSize; i++) {
+        let x = 100 + (i * (600 / this.boardSize));
+        this.graphics.lineStyle(2, 0x000000, 1);
+        this.graphics.beginPath();
+        this.graphics.moveTo(x, 100);
+        this.graphics.lineTo(x, 700);
+        this.graphics.strokePath();
+    }
+
+    // Draw horizontal grid lines
+    for (let i = 1; i < this.boardSize; i++) {
+        let y = 100 + (i * (600 / this.boardSize));
+        this.graphics.lineStyle(2, 0x000000, 1);
+        this.graphics.beginPath();
+        this.graphics.moveTo(100, y);
+        this.graphics.lineTo(700, y);
+        this.graphics.strokePath();
+    }
+}
+
+// Adds visual indicators for left and right side
+drawSideIndicators() {
+    // Left side indicator (Blue)
+    this.graphics.fillStyle(0x0000FF, 0.2);
+    this.graphics.fillRect(30, 100, 70, 600); // Left padding
+
+    // Right side indicator (Red)
+    this.graphics.fillStyle(0xFF0000, 0.2);
+    this.graphics.fillRect(700, 100, 70, 600); // Right padding
+
+    // Text Labels
+    this.add.text(65, 80, 'LEFT', { fontSize: '20px', color: '#0000FF' }).setOrigin(0.5);
+    this.add.text(735, 80, 'RIGHT', { fontSize: '20px', color: '#FF0000' }).setOrigin(0.5);
+}
+
+
     // Draws the current state of the board
     drawBoard() {
-        this.graphics.clear();
-        this.graphics.fillStyle(0xbbada0, 0.9);
-        this.graphics.fillRoundedRect(100, 100, 600, 600, 16);
+        this.graphics.clear(); // Clears old graphics
+        this.drawGrid(); // Draws grid lines
+        this.drawSideIndicators(); // Draws side indicators
+    
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
                 if (this.board[row][col]) {
                     this.add.text(120 + col * 85, 120 + row * 85, this.board[row][col], {
-                        fontSize: '32px', color: '#000'
+                        fontSize: '32px',
+                        color: '#000'
                     }).setOrigin(0.5);
                 }
             }
@@ -174,4 +224,46 @@ export class Game extends Phaser.Scene {
         this.currentPlayer = 'X';
         this.drawBoard();
     }
+
+    // Show winner popup
+    showWinnerPopup(winner) {
+        // Create a semi-transparent background
+        const modalBackground = this.add.graphics();
+        modalBackground.fillStyle(0x000000, 0.5); // Black with 50% opacity
+        modalBackground.fillRect(0, 0, this.scale.width, this.scale.height);
+        
+        // Create a centered popup window
+        const popup = this.add.graphics();
+        popup.fillStyle(0xffffff, 1); // White background
+        popup.fillRoundedRect(250, 200, 500, 300, 16); // Position, size, and rounded corners
+    
+        // Display winner text
+        const winnerText = this.add.text(500, 250, `Winner: ${winner}`, {
+            fontSize: '32px',
+            color: '#000',
+            fontFamily: 'Arial Black'
+        }).setOrigin(0.5);
+    
+        // Create a "Try Again" button
+        const tryAgainButton = this.add.text(500, 350, 'Play Again', {
+            fontSize: '24px',
+            color: '#ffffff',
+            backgroundColor: '#ff0000',
+            padding: { x: 10, y: 5 }
+        })
+        .setOrigin(0.5)
+        .setInteractive()
+        .on('pointerdown', () => {
+            modalBackground.destroy();
+            popup.destroy();
+            winnerText.destroy();
+            tryAgainButton.destroy();
+            EventBus.emit('game-over', this);
+        });
+    
+        // Add all elements to a Phaser Container for easier cleanup
+        this.popupGroup = this.add.container(0, 0, [modalBackground, popup, winnerText, tryAgainButton]);
+    }
+
+    
 }

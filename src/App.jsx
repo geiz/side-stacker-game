@@ -1,5 +1,4 @@
-import { useRef, useState } from 'react';
-
+import { useRef, useState, useEffect } from 'react';
 import Phaser from 'phaser';
 import { PhaserGame } from './game/PhaserGame';
 import { EventBus } from './game/EventBus';
@@ -8,13 +7,23 @@ import { EventBus } from './game/EventBus';
 const App = () => {
     const [mode, setMode] = useState(null);
     const [difficulty, setDifficulty] = useState('easy');
-
     // The sprite can only be moved in the MainMenu Scene
     const [canMoveSprite, setCanMoveSprite] = useState(true);
     
     //  References to the PhaserGame component (game and scene are exposed)
     const phaserRef = useRef();
     const [spritePosition, setSpritePosition] = useState({ x: 0, y: 0 });
+
+    useEffect(() => {
+        const handleGameOver = (winner) => {
+            console.log('Game Over! Winner:', winner);
+            setMode(null); // Reset mode to return to menu
+        };
+
+        EventBus.on('game-over', handleGameOver);
+        return () => EventBus.off('game-over', handleGameOver);
+    }, []);
+
 
     const changeScene = () => {
 
@@ -79,7 +88,6 @@ const App = () => {
         setDifficulty(selectedDifficulty);
         EventBus.emit('start-game', { mode: selectedMode, difficulty: selectedDifficulty });
     };
-
 
     return (
         <div>
