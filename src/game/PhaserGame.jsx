@@ -1,12 +1,20 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { EventBus } from './EventBus';
 import { Game } from './scenes/Game';
 
-export const PhaserGame = ({ currentActiveScene }) => {
+export const PhaserGame = (props) => {
     const gameRef = useRef(null);
 
+    const [mode, setMode] = useState(null);
+    const [difficulty, setDifficulty] = useState('easy');
+
+
     useEffect(() => {
+        setMode(props.mode);
+        setDifficulty(props.difficulty);
+
+        console.log("this: ", props)
         if (!gameRef.current) {
             const config = {
                 type: Phaser.AUTO,
@@ -25,14 +33,18 @@ export const PhaserGame = ({ currentActiveScene }) => {
             };
             
             gameRef.current = new Phaser.Game(config);
+
+            // Passes props
+            gameRef.current.scene.start('Game', { mode, difficulty })
         }
 
         const handleSceneReady = (scene) => {
             console.log('Game scene ready:', scene);
-            if (currentActiveScene) {
-                currentActiveScene(scene);
+            if (props.currentActiveScene) {
+                props.currentActiveScene(scene);
             }
         };
+
 
         EventBus.on('current-scene-ready', handleSceneReady);
 
@@ -43,7 +55,9 @@ export const PhaserGame = ({ currentActiveScene }) => {
                 gameRef.current = null;
             }
         };
-    }, [currentActiveScene]);
+
+
+    }, [mode, difficulty, props.currentActiveScene]);
 
     return <div id="game-container" style={{ width: '800px', height: '600px', margin: 'auto', backgroundColor: 'black' }}></div>;
 };

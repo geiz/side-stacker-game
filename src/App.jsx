@@ -9,7 +9,7 @@ const App = () => {
     const [difficulty, setDifficulty] = useState('easy');
     // The sprite can only be moved in the MainMenu Scene
     const [canMoveSprite, setCanMoveSprite] = useState(true);
-    
+
     //  References to the PhaserGame component (game and scene are exposed)
     const phaserRef = useRef();
     const [spritePosition, setSpritePosition] = useState({ x: 0, y: 0 });
@@ -29,8 +29,7 @@ const App = () => {
 
         const scene = phaserRef.current.scene;
 
-        if (scene)
-        {
+        if (scene) {
             scene.changeScene();
         }
     }
@@ -39,8 +38,7 @@ const App = () => {
 
         const scene = phaserRef.current.scene;
 
-        if (scene && scene.scene.key === 'MainMenu')
-        {
+        if (scene && scene.scene.key === 'MainMenu') {
             // Get the update logo position
             scene.moveLogo(({ x, y }) => {
 
@@ -54,8 +52,7 @@ const App = () => {
 
         const scene = phaserRef.current.scene;
 
-        if (scene)
-        {
+        if (scene) {
             // Add more stars
             const x = Phaser.Math.Between(64, scene.scale.width - 64);
             const y = Phaser.Math.Between(64, scene.scale.height - 64);
@@ -80,7 +77,7 @@ const App = () => {
     const currentScene = (scene) => {
 
         setCanMoveSprite(scene.scene.key !== 'MainMenu');
-        
+
     }
 
     const startGame = (selectedMode, selectedDifficulty) => {
@@ -91,17 +88,17 @@ const App = () => {
 
     return (
         <div>
-        {!mode ? (
-            <div>
-                <h1>Side Stacker Game</h1>
-                <button onClick={() => startGame('PvP', 'easy')}>Play PvP</button>
-                <button onClick={() => startGame('AI', 'easy')}>Play AI (Easy)</button>
-                <button onClick={() => startGame('AI', 'hard')}>Play AI (Hard)</button>
-            </div>
-        ) : (
-            <PhaserGame currentActiveScene={(scene) => console.log('Active Scene:', scene)} />
-        )}
-    </div>
+            {!mode ? (
+                <div>
+                    <h1>Side Stacker Game</h1>
+                    <button onClick={() => startGame('PvP', 'none')}>Play PvP</button>
+                    <button onClick={() => startGame('AI', 'easy')}>Play AI (Easy)</button>
+                    <button onClick={() => startGame('AI', 'hard')}>Play AI (Hard)</button>
+                </div>
+            ) : (
+                <PhaserGame mode={mode} difficulty={difficulty} />
+            )}
+        </div>
     )
 }
 

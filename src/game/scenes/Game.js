@@ -7,8 +7,12 @@ export class Game extends Phaser.Scene {
         this.boardSize = 7;
         this.board = this.createBoard(this.boardSize, this.boardSize);
         this.currentPlayer = 'X';
-        this.isAI = false;
-        this.aiDifficulty = 'easy';
+    }
+
+    init(data) {
+        this.isAI = data.mode === 'AI';
+        this.aiDifficulty = data.difficulty || 'none'; 
+        console.log(`Game Mode: ${data.mode}, Difficulty: ${data.difficulty}`);
     }
 
     // Preloads assets for the game
@@ -18,9 +22,12 @@ export class Game extends Phaser.Scene {
 
     // Initializes the game scene
     create() {
+        
         this.graphics = this.add.graphics(); // Initialize graphics
 
         this.drawBoard();
+
+        console.log("is ai? ", this)
 
         this.setupEvents();
         EventBus.emit('current-scene-ready', this);
@@ -34,8 +41,11 @@ export class Game extends Phaser.Scene {
     // Sets up event listeners
     setupEvents() {
         EventBus.on('start-game', ({ mode, difficulty }) => {
+            console.log("Event received - Mode:", mode, "Difficulty:", difficulty); // Debugging
             this.isAI = mode === 'AI';
             this.aiDifficulty = difficulty;
+
+            console
             this.resetGame();
         });
 
@@ -56,39 +66,66 @@ export class Game extends Phaser.Scene {
     // Processes a player's move
     makeMove(row, side) {
         let col = side === 'L' ? 0 : this.boardSize - 1;
+
+        // Find the next available space in the selected row
         while (this.board[row][col] !== null) {
             col += side === 'L' ? 1 : -1;
-            if (col < 0 || col >= this.boardSize) return;
+            if (col < 0 || col >= this.boardSize) return; // Move is invalid
         }
+
+        // Place player's move
         this.board[row][col] = this.currentPlayer;
         this.drawBoard();
+
+        // Check for a winner
         if (this.checkWin()) {
             this.showWinnerPopup(this.currentPlayer);
-        } else {
-            this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
-            if (this.isAI && this.currentPlayer === 'O') {
-                this.processAIMove();
-            }
+            return;
+        }
+
+        // Switch turn
+        this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+
+        // AI move if it's enabled and AI's turn
+        if (this.isAI && this.currentPlayer === 'O') {
+            this.time.delayedCall(25, () => this.processAIMove()); // Delay for better UX
         }
     }
 
     // Handles AI's move decision
     processAIMove() {
-        let move;
-        if (this.aiDifficulty === 'easy') {
-            move = this.getRandomMove();
-        } else {
-            move = this.getStrategicMove();
+        let move = this.getRandomMove();
+
+        if (!move) {
+            console.warn("AI has no valid moves!");
+            return;
         }
+
+        // if (this.aiDifficulty === 'easy') {
+        //     move = this.getRandomMove();
+        // } else if (this.aiDifficulty === 'hard') {
+        //     move = this.getStrategicMove();
+        // }
         this.makeMove(move.row, move.side);
     }
 
     // Returns a random valid move for AI
     getRandomMove() {
-        return {
-            row: Math.floor(Math.random() * this.boardSize),
-            side: Math.random() < 0.5 ? 'L' : 'R'
-        };
+        let availableMoves = [];
+
+        // Find all rows that have space
+        for (let row = 0; row < this.boardSize; row++) {
+            if (this.board[row][0] === null) {
+                availableMoves.push({ row, side: 'L' });
+            }
+            if (this.board[row][this.boardSize - 1] === null) {
+                availableMoves.push({ row, side: 'R' });
+            }
+        }
+
+        if (availableMoves.length === 0) return null; // No available moves
+
+        return availableMoves[Math.floor(Math.random() * availableMoves.length)];
     }
 
     // AI selects a move using a basic strategy
@@ -229,6 +266,10 @@ export class Game extends Phaser.Scene {
         this.board = this.createBoard(this.boardSize, this.boardSize);
         this.currentPlayer = 'X';
         this.drawBoard();
+
+        if (this.isAI && this.currentPlayer === 'O') {
+            this.processAIMove(); // AI plays first if it's 'O'
+        }
     }
 
     // Show winner popup
