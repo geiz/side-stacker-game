@@ -1,6 +1,11 @@
 import { EventBus } from '../EventBus';
 import Phaser from 'phaser';
 
+const BOARD_SIZE = 420;
+const OFFSET_X = 190; // Center board horizontally
+const OFFSET_Y = 150; // Center board vertically
+
+
 export class Game extends Phaser.Scene {
     constructor() {
         super('Game');
@@ -11,7 +16,7 @@ export class Game extends Phaser.Scene {
 
     init(data) {
         this.isAI = data.mode === 'AI';
-        this.aiDifficulty = data.difficulty || 'none'; 
+        this.aiDifficulty = data.difficulty || 'none';
         console.log(`Game Mode: ${data.mode}, Difficulty: ${data.difficulty}`);
     }
 
@@ -22,7 +27,7 @@ export class Game extends Phaser.Scene {
 
     // Initializes the game scene
     create() {
-        
+
         this.graphics = this.add.graphics(); // Initialize graphics
 
         this.drawBoard();
@@ -58,9 +63,17 @@ export class Game extends Phaser.Scene {
 
     // Handles user input when clicking the board
     handleClick(pointer) {
-        const row = Math.floor((pointer.y - 100) / 85);
-        const side = pointer.x < 400 ? 'L' : 'R';
-        this.makeMove(row, side);
+        const cellSize = BOARD_SIZE / this.boardSize;
+
+        const row = Math.floor((pointer.y - OFFSET_Y) / cellSize);
+        const side = pointer.x < OFFSET_X + BOARD_SIZE / 2 ? 'L' : 'R';
+
+        // Ensure row index is within valid bounds
+        if (row >= 0 && row < this.boardSize) {
+            this.makeMove(row, side);
+        } else {
+            console.warn("Invalid row selection:", row);
+        }
     }
 
     // Processes a player's move
@@ -113,19 +126,25 @@ export class Game extends Phaser.Scene {
     getRandomMove() {
         let availableMoves = [];
 
-        // Find all rows that have space
+        // Find all available grid spaces
         for (let row = 0; row < this.boardSize; row++) {
-            if (this.board[row][0] === null) {
-                availableMoves.push({ row, side: 'L' });
-            }
-            if (this.board[row][this.boardSize - 1] === null) {
-                availableMoves.push({ row, side: 'R' });
+            for (let col = 0; col < this.boardSize; col++) {
+                if (this.board[row][col] === null) {
+                    let side = col < this.boardSize / 2 ? 'L' : 'R'; // Determine side based on column position
+                    availableMoves.push({ row, col, side });
+                }
             }
         }
 
-        if (availableMoves.length === 0) return null; // No available moves
+        if (availableMoves.length === 0) {
+            console.log("no available moves");
+            return null; // No available moves
+        }
 
-        return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+        let result = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+        console.log("Result to return: ", result);
+
+        return result;
     }
 
     // AI selects a move using a basic strategy
@@ -174,13 +193,13 @@ export class Game extends Phaser.Scene {
             }
         }
         return false;
-    }
+    }    
 
     // Adds UI elements to the game
     addUI() {
         this.cameras.main.setBackgroundColor(0x87CEEB);
 
-        this.add.text(400, 50, 'Side Stacker Game', {
+        this.add.text(400, 25, 'Side Stacker Game', {
             fontFamily: 'Arial Black', fontSize: 32, color: '#ffffff',
             stroke: '#000000', strokeThickness: 6,
             align: 'center'
@@ -194,68 +213,65 @@ export class Game extends Phaser.Scene {
 
     // Draws grid lines and side indicators
     drawGrid() {
-        // Clear previous graphics
         this.graphics.clear();
-
+    
         // Background color for the board
         this.graphics.fillStyle(0xbbada0, 0.9);
-        this.graphics.fillRoundedRect(100, 100, 600, 600, 16);
-
+        this.graphics.fillRoundedRect(OFFSET_X, OFFSET_Y, BOARD_SIZE, BOARD_SIZE, 16);
+    
+        const cellSize = BOARD_SIZE / this.boardSize;
+    
         // Draw vertical grid lines
         for (let i = 1; i < this.boardSize; i++) {
-            let x = 100 + (i * (600 / this.boardSize));
+            let x = OFFSET_X + i * cellSize;
             this.graphics.lineStyle(2, 0x000000, 1);
             this.graphics.beginPath();
-            this.graphics.moveTo(x, 100);
-            this.graphics.lineTo(x, 700);
+            this.graphics.moveTo(x, OFFSET_Y);
+            this.graphics.lineTo(x, OFFSET_Y + BOARD_SIZE);
             this.graphics.strokePath();
         }
-
+    
         // Draw horizontal grid lines
         for (let i = 1; i < this.boardSize; i++) {
-            let y = 100 + (i * (600 / this.boardSize));
+            let y = OFFSET_Y + i * cellSize;
             this.graphics.lineStyle(2, 0x000000, 1);
             this.graphics.beginPath();
-            this.graphics.moveTo(100, y);
-            this.graphics.lineTo(700, y);
+            this.graphics.moveTo(OFFSET_X, y);
+            this.graphics.lineTo(OFFSET_X + BOARD_SIZE, y);
             this.graphics.strokePath();
         }
     }
-
+    
     // Adds visual indicators for left and right side
     drawSideIndicators() {
-        // Left side indicator (Blue)
         this.graphics.fillStyle(0x0000FF, 0.2);
-        this.graphics.fillRect(30, 100, 70, 600); // Left padding
-
-        // Right side indicator (Red)
+        this.graphics.fillRect(OFFSET_X - 50, OFFSET_Y, 50, BOARD_SIZE); // Left padding
+    
         this.graphics.fillStyle(0xFF0000, 0.2);
-        this.graphics.fillRect(700, 100, 70, 600); // Right padding
-
+        this.graphics.fillRect(OFFSET_X + BOARD_SIZE, OFFSET_Y, 50, BOARD_SIZE); // Right padding
+    
         // Text Labels
-        this.add.text(65, 80, 'LEFT', { fontSize: '20px', color: '#0000FF' }).setOrigin(0.5);
-        this.add.text(735, 80, 'RIGHT', { fontSize: '20px', color: '#FF0000' }).setOrigin(0.5);
+        this.add.text(OFFSET_X - 25, OFFSET_Y - 20, 'LEFT', { fontSize: '18px', color: '#0000FF' }).setOrigin(0.5);
+        this.add.text(OFFSET_X + BOARD_SIZE + 25, OFFSET_Y - 20, 'RIGHT', { fontSize: '18px', color: '#FF0000' }).setOrigin(0.5);
     }
-
-
+    
     // Draws the current state of the board
     drawBoard() {
-        this.graphics.clear(); // Clears old graphics
-        this.drawGrid(); // Draws grid lines
-        this.drawSideIndicators(); // Draws side indicators
-
-        const cellSize = 600 / this.boardSize; // Calculate dynamic cell size
-
+        this.graphics.clear();
+        this.drawGrid();
+        this.drawSideIndicators();
+    
+        const cellSize = BOARD_SIZE / this.boardSize;
+    
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
                 if (this.board[row][col]) {
-                    this.add.text(100 + (col + 0.5) * cellSize, // Center X
-                        100 + (row + 0.5) * cellSize, // Center Y
-                        this.board[row][col],
-                        {
-                            fontSize: '32px',
-                            color: '#000'
-                        }).setOrigin(0.5);
+                    this.add.text(
+                        OFFSET_X + (col + 0.5) * cellSize, 
+                        OFFSET_Y + (row + 0.5) * cellSize, 
+                        this.board[row][col], 
+                        { fontSize: '28px', color: '#000' }
+                    ).setOrigin(0.5);
                 }
             }
         }

@@ -59,7 +59,7 @@ export const PhaserGame = (props) => {
 
     }, [mode, difficulty, props.currentActiveScene]);
 
-    return <div id="game-container" style={{ width: '800px', height: '600px', margin: 'auto', backgroundColor: 'black' }}></div>;
+    return <div id="game-container" style={{ width: '800px', height: '800px', margin: 'auto', backgroundColor: 'black' }}></div>;
 };
 
 export default PhaserGame;
