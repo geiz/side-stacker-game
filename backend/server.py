@@ -3,11 +3,13 @@ import requests
 import random
 import logging
 from flask_cors import CORS
+import ast
 
 
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
+CORS(app)
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
@@ -55,7 +57,7 @@ def get_strategic_move(board_state):
     Board state: {board_state} 
 
     Your turn as 'O'. Choose the best move as (row, side), where row is 0-6 and side is 'L' or 'R'.
-    Example response: (2, R). Do not write anything else.
+    Example response: ['2', 'R']. Do not write anything else.
     """
     
     payload = {
@@ -67,8 +69,36 @@ def get_strategic_move(board_state):
     response = requests.post(OLLAMA_URL, json=payload)
 
     if response.status_code == 200:
-        return response.json()["response"].strip()
+        ai_response = response.json().get("response", "").strip()
+
+        try:
+            move_to_make = ast.literal_eval(ai_response)  # Convert "['2', 'R']" -> [2, "R"]
+            if isinstance(move_to_make, list) and len(move_to_make) == 2:
+                return move_to_make
+            else:
+                return "Invalid move format"
+        except (SyntaxError, ValueError):
+            return  "Error parsing move"
+
     return "Error getting move"
+
+    ## Try 2
+    # ai_response = requests.post(OLLAMA_URL, json=payload)
+    # ai_response_parsed = ai_response.json()["response"].strip()
+
+    # try:
+    #     move_to_make = ast.literal_eval(ai_response_parsed) 
+    #     return {"move": list(move_to_make)}  
+    # except (SyntaxError, ValueError):
+    #     return ValueError
+
+
+    ## Try 1
+    # response = requests.post(OLLAMA_URL, json=payload)
+
+    # if response.status_code == 200:
+    #     return response.json()["response"].strip()
+    # return "Error getting move"
 
 @app.route("/move", methods=["POST"])
 def get_move():
