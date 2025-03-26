@@ -110,10 +110,11 @@ export class Game extends Phaser.Scene {
         let boardString = "";
     
         for (let row = 0; row < this.boardSize; row++) {
+            boardString += `Row: ${row}: `
             for (let col = 0; col < this.boardSize; col++) {
                 boardString += this.board[row][col] ? this.board[row][col] : "_";
             }
-            if (row < this.boardSize - 1) boardString += " | "; // Separate rows with a delimiter
+            if (row < this.boardSize - 1) boardString += ','; // Separate rows with a comma
         }
     
         return boardString;
@@ -137,6 +138,7 @@ export class Game extends Phaser.Scene {
 
                 // Data should already be formatted from backend.
                 const [row, side] = data.move;
+                console.log('data.move: ', data.move)
                 this.makeMove(row, side);
             } else {
                 console.error('Invalid AI move response:', data);

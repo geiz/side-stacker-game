@@ -4,6 +4,8 @@ import random
 import logging
 from flask_cors import CORS
 import ast
+import re
+
 
 
 logging.basicConfig(level=logging.INFO)
@@ -13,6 +15,7 @@ CORS(app)
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
+# Chooses a move for the AI based on the difficulty level
 def get_ai_move(board_state, difficulty):
     """
     Generates an AI move based on difficulty level.
@@ -32,6 +35,7 @@ def get_ai_move(board_state, difficulty):
     else:  # Hard AI (default)
         return get_strategic_move(board_state)
 
+# Easy difficulty and 50% of medium difficulty
 def get_random_move(board_state):
     """
     Selects a random valid move from available rows and sides.
@@ -45,19 +49,23 @@ def get_random_move(board_state):
 
     return random.choice(available_moves) if available_moves else "No Moves"
 
+# Hard difficulty
 def get_strategic_move(board_state):
     """
     Uses AI model to find the best move with an intention to win.
     """
     prompt = f"""
     You are playing Side-Stacking Connect 4 on a 7x7 board. You are 'O', the opponent is 'X'.
-    Players place pieces in any row from the left (L) or right (R), shifting existing pieces.
-    Win by aligning 4 in a row, column, or diagonal. If no winning move, choose a blocking move.
+    Players place pieces in any row from the left 'L' or right 'R', shifting existing pieces.
+    Win by aligning 4 x 'O' in a row, column, or diagonal. If no winning move, choose a blocking move.
     
     Board state: {board_state} 
 
-    Your turn as 'O'. Choose the best move as (row, side), where row is 0-6 and side is 'L' or 'R'.
-    Example response: ['2', 'R']. Do not write anything else.
+    Your turn as 'O'. Choose the best move as [row, side, reason for move]. You want to win, and stop the 'X' from Winning. 
+    Row is 0-6 and side is 'L' or 'R'. Good luck.
+    Example response 1: ['2', 'R', 'Trying to connect 4 diagnonally between rows 2,3,4,5']. Do not write anything else.
+    Example response 2: ['4', 'L', 'Trying to connect 4 vertically between rows 1,2,3,4']. Do not write anything else.
+    Example response 3: ['5', 'R', 'Blocking a Vertical connect from X']. Do not write anything else.
     """
     
     payload = {
@@ -70,36 +78,36 @@ def get_strategic_move(board_state):
 
     if response.status_code == 200:
         ai_response = response.json().get("response", "").strip()
+        return parse_ai_response(ai_response)
 
+    return ["Error getting move"]
+
+# AI sometimes give different formatted responses. This functions clears it up.
+def parse_ai_response(ai_response):
+    """
+    Parses AI response to extract a valid move in the format [row, "L" or "R"].
+    Handles multiple formats:
+    - "[5, L]"
+    - "['2', 'R']"
+    - "[ 3 ,  'L' ]"
+    - "(4, R)"
+    """
+
+    # Extract numbers and letters using regex
+    match = re.findall(r"\d+|[LR]", ai_response)
+    
+    if len(match) == 2:
         try:
-            move_to_make = ast.literal_eval(ai_response)  # Convert "['2', 'R']" -> [2, "R"]
-            if isinstance(move_to_make, list) and len(move_to_make) == 2:
-                return move_to_make
-            else:
-                return "Invalid move format"
-        except (SyntaxError, ValueError):
-            return  "Error parsing move"
+            row = int(match[0])  # Convert first part to an integer
+            side = match[1] if match[1] in ['L', 'R'] else None  # Validate L/R
+            if side:
+                return [row, side, ai_response]  # Valid move format, with full response for debug
+        except ValueError:
+            pass
 
-    return "Error getting move"
+    return ["Error parsing move", ai_response]  # Default error response
 
-    ## Try 2
-    # ai_response = requests.post(OLLAMA_URL, json=payload)
-    # ai_response_parsed = ai_response.json()["response"].strip()
-
-    # try:
-    #     move_to_make = ast.literal_eval(ai_response_parsed) 
-    #     return {"move": list(move_to_make)}  
-    # except (SyntaxError, ValueError):
-    #     return ValueError
-
-
-    ## Try 1
-    # response = requests.post(OLLAMA_URL, json=payload)
-
-    # if response.status_code == 200:
-    #     return response.json()["response"].strip()
-    # return "Error getting move"
-
+# API to be called by Front-end
 @app.route("/move", methods=["POST"])
 def get_move():
     logging.info(f"Received Request: {request}")
