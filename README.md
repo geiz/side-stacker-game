@@ -7,9 +7,9 @@
 # How to Run Backend Locally
 1. Activate a python environment
 2. ```pip install -r backend/requirements.txt```
-3. ```python backend/server.py```
+3. ```npm run backend``` or ```python backend/server.py``` 
 
-# How to Run Game Locally
+# How to Front-end Locally
 1. ```npm i```
 2. ```npm run dev```
 
