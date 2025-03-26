@@ -1,3 +1,13 @@
+# How to Run AI on Mac.
+1. Install ollama: https://ollama.com/download
+2. ```ollama serve```
+3. ```ollama pull llama3.2```
+4. Sample request to confirm it is working: ```curl http://localhost:11434/api/generate -d '{ "model": "llama3.2", "prompt": "Who are you?", "stream": false }'```
+
+# How to Run Game
+1. ```npm i```
+2. ```npm run dev```
+
 # Phaser React Template
 
 This is a Phaser 3 project template that uses the React framework and Vite for bundling. It includes a bridge for React to Phaser game communication, hot-reloading for quick development workflow and scripts to generate production-ready builds.
