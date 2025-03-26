@@ -105,67 +105,44 @@ export class Game extends Phaser.Scene {
         }
     }
 
-    // Handles AI's move decision
-    processAIMove() {
-        let move = this.getRandomMove();
-
-        if (!move) {
-            console.warn("AI has no valid moves!");
-            return;
-        }
-
-        // if (this.aiDifficulty === 'easy') {
-        //     move = this.getRandomMove();
-        // } else if (this.aiDifficulty === 'hard') {
-        //     move = this.getStrategicMove();
-        // }
-        this.makeMove(move.row, move.side);
-    }
-
-    // Returns a random valid move for AI
-    getRandomMove() {
-        let availableMoves = [];
-
-        // Find all available grid spaces
+    // Return the current state of the board as a formatted string, matching the structure expected by the AI
+    getBoardState() {
+        let boardString = "";
+    
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
-                if (this.board[row][col] === null) {
-                    let side = col < this.boardSize / 2 ? 'L' : 'R'; // Determine side based on column position
-                    availableMoves.push({ row, col, side });
-                }
+                boardString += this.board[row][col] ? this.board[row][col] : "_";
             }
+            if (row < this.boardSize - 1) boardString += " | "; // Separate rows with a delimiter
         }
-
-        if (availableMoves.length === 0) {
-            console.log("no available moves");
-            return null; // No available moves
-        }
-
-        let result = availableMoves[Math.floor(Math.random() * availableMoves.length)];
-        console.log("Result to return: ", result);
-
-        return result;
+    
+        return boardString;
     }
 
-    // AI selects a move using a basic strategy
-    getStrategicMove() {
-        for (let row = 0; row < this.boardSize; row++) {
-            for (let side of ['L', 'R']) {
-                let testBoard = JSON.parse(JSON.stringify(this.board));
-                let col = side === 'L' ? 0 : this.boardSize - 1;
-                while (testBoard[row][col] !== null) {
-                    col += side === 'L' ? 1 : -1;
-                    if (col < 0 || col >= this.boardSize) break;
-                }
-                if (col >= 0 && col < this.boardSize) {
-                    testBoard[row][col] = 'O';
-                    if (this.checkWin(testBoard)) {
-                        return { row, side };
-                    }
-                }
+    
+    // Handles AI's move decision by calling backend.
+    async processAIMove() {
+        const boardState = this.getBoardState(); // Convert board to a string
+    
+        try {
+            const response = await fetch('http://127.0.0.1:5001/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ board: boardState, difficulty: this.aiDifficulty }) // Send difficulty level
+            });
+    
+            const data = await response.json();
+            console.log("data: ", data)
+    
+            if (data.move) {
+                const [row, side] = this.parseMove(data.move);
+                this.makeMove(row, side);
+            } else {
+                console.error('Invalid AI move response:', data);
             }
+        } catch (error) {
+            console.error('Error fetching AI move:', error);
         }
-        return this.getRandomMove();
     }
 
     // Checks if there is a winner on the board
