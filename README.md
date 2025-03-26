@@ -1,10 +1,15 @@
-# How to Run AI on Mac.
+# How to Run AI on Mac Locally
 1. Install ollama: https://ollama.com/download
 2. ```ollama serve```
 3. ```ollama pull llama3.2```
 4. Sample request to confirm it is working: ```curl http://localhost:11434/api/generate -d '{ "model": "llama3.2", "prompt": "Who are you?", "stream": false }'```
 
-# How to Run Game
+# How to Run Backend Locally
+1. Activate a python environment
+2. ```pip install -r backend/requirements.txt```
+3. ```python backend/server.py```
+
+# How to Run Game Locally
 1. ```npm i```
 2. ```npm run dev```
 
