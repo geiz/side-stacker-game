@@ -119,7 +119,6 @@ export class Game extends Phaser.Scene {
         return boardString;
     }
 
-    
     // Handles AI's move decision by calling backend.
     async processAIMove() {
         const boardState = this.getBoardState(); // Convert board to a string
@@ -135,7 +134,9 @@ export class Game extends Phaser.Scene {
             console.log("data: ", data)
     
             if (data.move) {
-                const [row, side] = this.parseMove(data.move);
+
+                // Data should already be formatted from backend.
+                const [row, side] = data.move;
                 this.makeMove(row, side);
             } else {
                 console.error('Invalid AI move response:', data);
