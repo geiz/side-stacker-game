@@ -39,12 +39,12 @@ class SideStackingConnect4(gym.Env):
         self.board[row, col] = self.current_player
 
         # Count player sequences
-        reward = self.count_streak_reward(self.current_player)
+        reward = self.count_streak_reward_from_move(self.current_player, row, col)
 
         # Check for win or draw
         win_reward, terminated = self.check_win()
         if terminated and win_reward == 100:
-            reward = 100  # override everything
+            reward = 100 
 
         # Check if blocking opponent's 3-in-a-row
         if self.check_opponent_block(threshold=3):
@@ -59,27 +59,44 @@ class SideStackingConnect4(gym.Env):
 
         return self.board.copy(), reward, terminated, False, {}
 
-    def count_streak_reward(self, player):
+    # Only Track the position of the latest move
+    # Check in all directions from that point
+    # Reward only based on the longest streak that move creates
+    # No reward for 2 if it already triggered a 3 or 4
+    def count_streak_reward_from_move(self, player, row, col):
         reward = 0
         directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
 
-        for r in range(self.board_size):
-            for c in range(self.board_size):
-                if self.board[r, c] != player:
-                    continue
-                for dr, dc in directions:
-                    count = 1
-                    for step in range(1, 4):
-                        nr, nc = r + step * dr, c + step * dc
-                        if 0 <= nr < self.board_size and 0 <= nc < self.board_size:
-                            if self.board[nr, nc] == player:
-                                count += 1
-                            elif self.board[nr, nc] != 0:
-                                break
-                    if count == 2:
-                        reward += 5
-                    elif count == 3:
-                        reward += 10
+        max_streak = 1  # Always includes the move itself
+
+        for dr, dc in directions:
+            count = 1  # Start with the current move
+            for step in range(1, 4):
+                nr, nc = row + step * dr, col + step * dc
+                if 0 <= nr < self.board_size and 0 <= nc < self.board_size:
+                    if self.board[nr, nc] == player:
+                        count += 1
+                    else:
+                        break
+
+            for step in range(1, 4):
+                nr, nc = row - step * dr, col - step * dc
+                if 0 <= nr < self.board_size and 0 <= nc < self.board_size:
+                    if self.board[nr, nc] == player:
+                        count += 1
+                    else:
+                        break
+
+            max_streak = max(max_streak, count)
+
+        # Only reward based on the **longest streak** involving the new move
+        if max_streak == 2:
+            reward += 5
+        elif max_streak == 3:
+            reward += 10
+        elif max_streak >= 4:
+            reward += 50  # fallback; win reward comes from check_win()
+
         return reward
 
 
@@ -119,9 +136,10 @@ class SideStackingConnect4(gym.Env):
                         break
 
                 if 0 <= col < self.board_size and self.board[row, col] == 0:
-                    self.board[row, col] = opponent
-                    score = self.count_streak_reward(opponent)
-                    self.board[row, col] = 0
+                    self.board[row, col] = opponent  # Simulate opponent move
+                    score = self.count_streak_reward_from_move(opponent, row, col)
+                    self.board[row, col] = 0  # Undo move
+
                     if threshold == 3 and score >= 10:
                         return True
         return False
