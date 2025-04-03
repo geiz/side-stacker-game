@@ -47,7 +47,7 @@ class SideStackingConnect4(gym.Env):
             reward = 100 
 
         # Check if blocking opponent's 3-in-a-row
-        if self.check_opponent_block(threshold=3):
+        if self.check_opponent_block(threshold=3) or self.detect_broken_4(-self.current_player):
             reward += 50
 
         # Ensure minimum reward per move (small penalty for wasting time)
@@ -124,7 +124,6 @@ class SideStackingConnect4(gym.Env):
         # No win condition met
         return 0, False
     
-
     def check_opponent_block(self, threshold=3):
         opponent = -self.current_player
         for r in range(self.board_size):
@@ -135,6 +134,31 @@ class SideStackingConnect4(gym.Env):
                     self.board[r, c] = 0
                     if threshold == 3 and score >= 10:
                         return True
+        return False
+    
+    # Detects a broken 4 in a row
+    def detect_broken_4(self, player):
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+        
+        for r in range(self.board_size):
+            for c in range(self.board_size):
+                for dr, dc in directions:
+                    positions = []
+                    for step in range(5):  # Look at 5-cell segments to find broken 4s
+                        nr, nc = r + step * dr, c + step * dc
+                        if 0 <= nr < self.board_size and 0 <= nc < self.board_size:
+                            positions.append((nr, nc))
+                        else:
+                            break
+                    if len(positions) == 5:
+                        vals = [self.board[nr, nc] for nr, nc in positions]
+                        # Count how many are player's pieces and how many are empty
+                        if vals.count(player) == 4 and vals.count(0) == 1:
+                            empty_index = vals.index(0)
+                            er, ec = positions[empty_index]
+                            # Check if the empty spot is actually playable (not floating)
+                            if er == self.board_size - 1 or self.board[er + 1, ec] != 0:
+                                return True  # Threat detected
         return False
 
 
