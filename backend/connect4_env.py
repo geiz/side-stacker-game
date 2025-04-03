@@ -41,13 +41,24 @@ class SideStackingConnect4(gym.Env):
         # Count player sequences
         reward = self.count_streak_reward_from_move(self.current_player, row, col)
 
-        # Check for win or draw
+        # Check for win or draw or block and assign rewards
         win_reward, terminated = self.check_win()
-        if terminated and win_reward == 100:
+
+        
+        if terminated:
+            if win_reward == 100:
+                reward = 100  # Winning move
+            else:
+                reward = 0    # Draw
+
+        elif self.check_win_for_player(self.current_player):
             reward = 100 
 
-        # Check if blocking opponent's 3-in-a-row
-        if self.check_opponent_block(threshold=3) or self.detect_broken_4(-self.current_player):
+        # block 3 in a row
+        elif self.check_opponent_block(threshold=3):
+            reward += 50
+        # block broken 4.
+        elif self.detect_broken_4(-self.current_player):
             reward += 50
 
         # Ensure minimum reward per move (small penalty for wasting time)
@@ -57,7 +68,7 @@ class SideStackingConnect4(gym.Env):
         # Switch player
         self.current_player *= -1
 
-        return self.board.copy(), reward, terminated, False, {}
+        return self.board.copy(), reward, terminated, False, {"winner": self.current_player}
 
     # Only Track the position of the latest move
     # Check in all directions from that point
@@ -124,19 +135,63 @@ class SideStackingConnect4(gym.Env):
         # No win condition met
         return 0, False
     
+    # Checks if need to block an opponent
     def check_opponent_block(self, threshold=3):
         opponent = -self.current_player
-        for r in range(self.board_size):
-            for c in range(self.board_size):
+        for c in range(self.board_size):
+            for r in reversed(range(self.board_size)):
                 if self.board[r, c] == 0:
                     self.board[r, c] = opponent
                     score = self.count_streak_reward_from_move(opponent, r, c)
                     self.board[r, c] = 0
                     if threshold == 3 and score >= 10:
                         return True
+                    break  # only check the first droppable spot
         return False
     
-    # Detects a broken 4 in a row
+    # If there's a winning move, take it.
+    def check_win_for_player(self, player):
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]  # V, H, D1, D2
+
+        for col in range(self.board_size):
+            # Find first empty spot from bottom
+            for row in reversed(range(self.board_size)):
+                if self.board[row, col] == 0:
+                    self.board[row, col] = player  # simulate move
+                    # Check if this move creates a 4-in-a-row
+                    if self.is_winning_move(player, row, col, directions):
+                        self.board[row, col] = 0  # undo move
+                        return True
+                    self.board[row, col] = 0
+                    break  # only check the first playable row
+        return False
+    
+    # helper function for check_win_for_player
+    def is_winning_move(self, player, row, col, directions):
+        for dr, dc in directions:
+            count = 1
+
+            # Check backward
+            for step in range(1, 4):
+                r, c = row - dr * step, col - dc * step
+                if 0 <= r < self.board_size and 0 <= c < self.board_size and self.board[r, c] == player:
+                    count += 1
+                else:
+                    break
+
+            # Check forward
+            for step in range(1, 4):
+                r, c = row + dr * step, col + dc * step
+                if 0 <= r < self.board_size and 0 <= c < self.board_size and self.board[r, c] == player:
+                    count += 1
+                else:
+                    break
+
+            if count >= 4:
+                return True
+        return False
+    
+    # Detects a broken 4 in a row and apply block
     def detect_broken_4(self, player):
         directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
         
@@ -165,4 +220,3 @@ class SideStackingConnect4(gym.Env):
     def render(self):
         """Prints the board for debugging."""
         print("\n".join([" ".join(["X" if c == 1 else "O" if c == -1 else "." for c in row]) for row in self.board]))
-        print()
