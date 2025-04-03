@@ -48,7 +48,7 @@ class SideStackingConnect4(gym.Env):
 
         # Check if blocking opponent's 3-in-a-row
         if self.check_opponent_block(threshold=3):
-            reward += 25
+            reward += 50
 
         # Ensure minimum reward per move (small penalty for wasting time)
         if reward == 0:
@@ -127,19 +127,12 @@ class SideStackingConnect4(gym.Env):
 
     def check_opponent_block(self, threshold=3):
         opponent = -self.current_player
-        for row in range(self.board_size):
-            for side in [0, 1]:
-                col = 0 if side == 0 else self.board_size - 1
-                while 0 <= col < self.board_size and self.board[row, col] != 0:
-                    col += 1 if side == 0 else -1
-                    if col < 0 or col >= self.board_size:
-                        break
-
-                if 0 <= col < self.board_size and self.board[row, col] == 0:
-                    self.board[row, col] = opponent  # Simulate opponent move
-                    score = self.count_streak_reward_from_move(opponent, row, col)
-                    self.board[row, col] = 0  # Undo move
-
+        for r in range(self.board_size):
+            for c in range(self.board_size):
+                if self.board[r, c] == 0:
+                    self.board[r, c] = opponent
+                    score = self.count_streak_reward_from_move(opponent, r, c)
+                    self.board[r, c] = 0
                     if threshold == 3 and score >= 10:
                         return True
         return False
