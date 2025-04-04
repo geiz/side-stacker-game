@@ -1,8 +1,14 @@
-# How to Run AI on Mac Locally
+# How to Run Gen AI on Mac Locally
 1. Install ollama: https://ollama.com/download
 2. ```ollama serve```
 3. ```ollama pull llama3.2```
 4. Sample request to confirm it is working: ```curl http://localhost:11434/api/generate -d '{ "model": "llama3.2", "prompt": "Who are you?", "stream": false }'```
+
+# How to Work with Reinforcement Learning AI on Mac Locally
+1. ```pip install -r /backend/requirements.txt```
+2. Train a new model: ```python /backend/training/train_rl.py``` Model will be generated at: backend/model/connect4_rl_model.zip
+3. Modify gym environment: ```/backend/training/connect4_env.py```
+4. Test the model: ```python /backend/training/reinforcement_ai_test.py```
 
 # How to Run Backend Locally
 1. Activate a python environment
