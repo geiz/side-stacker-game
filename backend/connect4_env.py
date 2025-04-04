@@ -24,16 +24,39 @@ class SideStackingConnect4(gym.Env):
         return self.board.copy(), {}
 
     def step(self, action):
-        row = action // 2
-        side = action % 2
-        col = 0 if side == 0 else self.board_size - 1
+        retry_limit = 5
+        retries = 0
 
-        # Slide piece into available column
-        original_col = col
-        while 0 <= col < self.board_size and self.board[row, col] != 0:
-            col += 1 if side == 0 else -1
+        while retries < retry_limit:
+            row = action // 2
+            side = action % 2
+            col = 0 if side == 0 else self.board_size - 1
+
+            # Slide piece into available column
+            while 0 <= col < self.board_size and self.board[row, col] != 0:
+                col += 1 if side == 0 else -1
+
+            # Invalid move: no space in this direction
             if col < 0 or col >= self.board_size:
-                return self.board.copy(), -10, False, False, {"reason": "invalid_move"}
+                retries += 1
+                return self.board.copy(), -10, False, False, {
+                    "reason": "invalid_move",
+                    "retries": retries,
+                    "action": (row, "L" if side == 0 else "R"),
+                    "current_player": self.current_player,
+                    "retry": True
+                }
+
+            # VALID move — break loop
+            break
+
+        # If all retries failed
+        if retries >= retry_limit:
+            return self.board.copy(), -50, True, False, {
+                "reason": "max_retries_exceeded",
+                "current_player": self.current_player,
+                "retry": False
+            }
 
         # Apply move
         self.board[row, col] = self.current_player
@@ -41,34 +64,49 @@ class SideStackingConnect4(gym.Env):
         # Count player sequences
         reward = self.count_streak_reward_from_move(self.current_player, row, col)
 
-        # Check for win or draw or block and assign rewards
+        # manual force big hint to AI if it's a winning move.
+        if self.check_win_for_player(self.current_player):
+            reward += 100 
+
+        # Check for win or draw
         win_reward, terminated = self.check_win()
 
-        
         if terminated:
             if win_reward == 100:
-                reward = 100  # Winning move
+                reward += 100  # Win
             else:
-                reward = 0    # Draw
-
-        elif self.check_win_for_player(self.current_player):
-            reward = 100 
-
-        # block 3 in a row
-        elif self.check_opponent_block(threshold=3):
-            reward += 50
-        # block broken 4.
+                reward += 0    # Draw
+        elif self.check_opponent_block():
+            reward += 40
         elif self.detect_broken_4(-self.current_player):
-            reward += 50
+            reward += 40
+        elif reward == 0:
+            reward += -0.1
 
-        # Ensure minimum reward per move (small penalty for wasting time)
-        if reward == 0:
-            reward = -0.1
+        # Save winner before flipping
+        winner = self.current_player
+        self.current_player *= -1  # Flip turn
 
-        # Switch player
-        self.current_player *= -1
+        return self.board.copy(), reward, terminated, False, {
+            "winner": winner,
+            "action": (row, col),
+            "current_player": self.current_player,
+            "retry": False
+        }
+    # Returns a list of valid moves to the AI
+    def get_valid_actions(self):
+        valid_actions = []
+        for row in range(self.board_size):
+            for side in [0, 1]:
+                col = 0 if side == 0 else self.board_size - 1
+                temp_col = col
+                while 0 <= temp_col < self.board_size and self.board[row, temp_col] != 0:
+                    temp_col += 1 if side == 0 else -1
+                if 0 <= temp_col < self.board_size:
+                    action = row * 2 + side
+                    valid_actions.append(action)
+        return valid_actions
 
-        return self.board.copy(), reward, terminated, False, {"winner": self.current_player}
 
     # Only Track the position of the latest move
     # Check in all directions from that point
@@ -101,12 +139,10 @@ class SideStackingConnect4(gym.Env):
             max_streak = max(max_streak, count)
 
         # Only reward based on the **longest streak** involving the new move
-        if max_streak == 2:
-            reward += 5
-        elif max_streak == 3:
-            reward += 10
+        if max_streak == 3:
+            reward += 1
         elif max_streak >= 4:
-            reward += 50  # fallback; win reward comes from check_win()
+            reward += 5  # fallback; win reward comes from check_win()
 
         return reward
 
@@ -126,7 +162,7 @@ class SideStackingConnect4(gym.Env):
                             count += 1
                         else:
                             break
-                    if count == 4:
+                    if count >= 4:
                         return 100, True  # Winning move
 
         if not (self.board == 0).any():
@@ -138,32 +174,50 @@ class SideStackingConnect4(gym.Env):
     # Checks if need to block an opponent
     def check_opponent_block(self, threshold=3):
         opponent = -self.current_player
-        for c in range(self.board_size):
-            for r in reversed(range(self.board_size)):
-                if self.board[r, c] == 0:
-                    self.board[r, c] = opponent
-                    score = self.count_streak_reward_from_move(opponent, r, c)
-                    self.board[r, c] = 0
-                    if threshold == 3 and score >= 10:
-                        return True
-                    break  # only check the first droppable spot
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+
+        for row in range(self.board_size):
+            for side in [0, 1]:
+                col = self.simulate_stack(row, side)
+                if col is None:
+                    continue
+                self.board[row, col] = opponent
+                if self.is_winning_move(opponent, row, col, directions):
+                    self.board[row, col] = 0
+                    return True
+                self.board[row, col] = 0
+
         return False
+    
+    # Helper functions
+    def simulate_stack(self, row, side):
+        col = 0 if side == 0 else self.board_size - 1
+        while 0 <= col < self.board_size and self.board[row, col] != 0:
+            col += 1 if side == 0 else -1
+        if 0 <= col < self.board_size and self.board[row, col] == 0:
+            return col
+        return None
     
     # If there's a winning move, take it.
     def check_win_for_player(self, player):
         directions = [(1, 0), (0, 1), (1, 1), (1, -1)]  # V, H, D1, D2
 
-        for col in range(self.board_size):
-            # Find first empty spot from bottom
-            for row in reversed(range(self.board_size)):
-                if self.board[row, col] == 0:
-                    self.board[row, col] = player  # simulate move
-                    # Check if this move creates a 4-in-a-row
-                    if self.is_winning_move(player, row, col, directions):
-                        self.board[row, col] = 0  # undo move
+        for row in range(self.board_size):
+            for side in [0, 1]:
+                col = 0 if side == 0 else self.board_size - 1
+                temp_col = col
+                while 0 <= temp_col < self.board_size and self.board[row, temp_col] != 0:
+                    temp_col += 1 if side == 0 else -1
+                    if temp_col < 0 or temp_col >= self.board_size:
+                        break
+
+                if 0 <= temp_col < self.board_size and self.board[row, temp_col] == 0:
+                    self.board[row, temp_col] = player
+                    if self.is_winning_move(player, row, temp_col, directions):
+                        self.board[row, temp_col] = 0
                         return True
-                    self.board[row, col] = 0
-                    break  # only check the first playable row
+                    self.board[row, temp_col] = 0
+                    
         return False
     
     # helper function for check_win_for_player
@@ -220,3 +274,4 @@ class SideStackingConnect4(gym.Env):
     def render(self):
         """Prints the board for debugging."""
         print("\n".join([" ".join(["X" if c == 1 else "O" if c == -1 else "." for c in row]) for row in self.board]))
+        print()
