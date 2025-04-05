@@ -2,7 +2,7 @@ from stable_baselines3 import PPO
 from connect4_env import SideStackingConnect4
 
 env = SideStackingConnect4()
-model = PPO.load("model/connect4_rl_model", env=env)
+model = PPO.load("../model/connect4_rl_model", env=env)
 
 obs, _ = env.reset()
 done = False
