@@ -10,4 +10,4 @@ model = PPO("MlpPolicy", env, verbose=1)
 model.learn(total_timesteps=500000)  # Train longer for better results
 
 # Save model
-model.save("../model/connect4_rl_model")
+model.save("backend/model/connect4_rl_model")
